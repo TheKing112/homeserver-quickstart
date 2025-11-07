@@ -40,7 +40,7 @@ autoinstall:
     username: admin
     # Password: "homeserver" (change after first login!)
     # Generated with: mkpasswd -m sha-512
-    password: "$6$rounds=4096$saltysalt$Jy5GXwx8UYk9R7w9Q8J1F2l3M4n5O6p7Q8r9S0t1U2v3W4x5Y6z7A8b9C0d1E2f3G4h5I6j7K8l9M0n1O2p3Q4"
+    password: "$6$IhHhYZJQ2AGizold$oXedOYAzeI7A2O.OMW7RwPsMcDKChB9luzKOKtuwz2HCBFPcOVU.8Y0APBqF2eN0/Hl8INkHudgvsg5ijD9fW1"
   
   # SSH Configuration
   ssh:
