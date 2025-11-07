@@ -1,0 +1,87 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          scandir: './scripts'
+          severity: warning
+  
+  yaml-lint:
+    name: YAML Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Lint YAML files
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: .
+          config_file: .yamllint.yml
+          strict: true
+  
+  validate-compose:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate docker-compose.yml
+        run: |
+          cd docker-compose
+          docker compose -f docker-compose.yml config > /dev/null
+          docker compose -f docker-compose.monitoring.yml config > /dev/null
+          docker compose -f docker-compose.mail.yml config > /dev/null
+          docker compose -f docker-compose.mcp.yml config > /dev/null
+      
+      - name: Check for issues
+        run: |
+          echo "All Docker Compose files are valid!"
+  
+  markdown-lint:
+    name: Markdown Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Lint Markdown files
+        uses: articulate/actions-markdownlint@v1
+        with:
+          config: .markdownlint.json
+          files: '**/*.md'
+          ignore: node_modules
+  
+  python-lint:
+    name: Python Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install flake8 black
+      
+      - name: Lint with flake8
+        run: |
+          flake8 mail-api/ mcp-servers/ --count --select=E9,F63,F7,F82 --show-source --statistics
+      
+      - name: Check formatting with black
+        run: |
+          black --check mail-api/ mcp-servers/

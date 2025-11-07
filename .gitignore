@@ -1,0 +1,50 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Data
+data/
+*.data
+
+# Logs
+*.log
+logs/
+
+# Secrets
+*.key
+*.pem
+*.crt
+secrets/
+.restic-password
+.wireguard-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Backup
+*.backup
+*.bak
+backup/
+
+# Temp
+tmp/
+*.tmp
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+
+# Install markers
+.install-complete

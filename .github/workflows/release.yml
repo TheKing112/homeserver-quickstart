@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create ZIP archive
+        run: |
+          zip -r homeserver-quickstart-${{ github.ref_name }}.zip \
+            autoinstall/ \
+            configs/ \
+            docker-compose/ \
+            mail-api/ \
+            mcp-servers/ \
+            scripts/ \
+            windows-tools/ \
+            docs/ \
+            examples/ \
+            README.md \
+            LICENSE \
+            .env.example \
+            Makefile \
+            CONTRIBUTING.md \
+            CHANGELOG.md
+      
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: homeserver-quickstart-${{ github.ref_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

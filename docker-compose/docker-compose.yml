@@ -1,0 +1,387 @@
+version: '3.8'
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres_data:
+  mariadb_data:
+  redis_data:
+  gitea_data:
+  portainer_data:
+  traefik_certs:
+  vaultwarden_data:
+  code_data:
+  drone_data:
+  registry_data:
+
+services:
+  #############################################
+  # REVERSE PROXY
+  #############################################
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../configs/traefik/traefik.yml:/traefik.yml:ro
+      - ../configs/traefik/dynamic:/dynamic:ro
+      - traefik_certs:/letsencrypt
+    environment:
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.homeserver.local`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.entrypoints=web"
+
+  #############################################
+  # DOCKER MANAGEMENT
+  #############################################
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - frontend
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer_data:/data
+    environment:
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.homeserver.local`)"
+      - "traefik.http.routers.portainer.entrypoints=web"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+
+  #############################################
+  # DATABASES
+  #############################################
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    restart: unless-stopped
+    networks:
+      - backend
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-admin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-homeserver}
+      - TZ=${TZ:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mariadb:
+    image: mariadb:11
+    container_name: mariadb
+    restart: unless-stopped
+    networks:
+      - backend
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-homeserver}
+      - MYSQL_USER=${MYSQL_USER:-admin}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - TZ=${TZ:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: unless-stopped
+    networks:
+      - backend
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    environment:
+      - TZ=${TZ:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  #############################################
+  # DATABASE UI
+  #############################################
+  adminer:
+    image: adminer:latest
+    container_name: adminer
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    environment:
+      - ADMINER_DEFAULT_SERVER=postgres
+      - ADMINER_DESIGN=nette
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adminer.rule=Host(`db.homeserver.local`)"
+      - "traefik.http.routers.adminer.entrypoints=web"
+      - "traefik.http.services.adminer.loadbalancer.server.port=8080"
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: redis-commander
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    environment:
+      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD}
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.redis.rule=Host(`redis.homeserver.local`)"
+      - "traefik.http.routers.redis.entrypoints=web"
+      - "traefik.http.services.redis.loadbalancer.server.port=8081"
+
+  #############################################
+  # SECURITY
+  #############################################
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    networks:
+      - frontend
+    volumes:
+      - vaultwarden_data:/data
+    environment:
+      - SIGNUPS_ALLOWED=true
+      - ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN}
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vault.rule=Host(`vault.homeserver.local`)"
+      - "traefik.http.routers.vault.entrypoints=web"
+      - "traefik.http.services.vault.loadbalancer.server.port=80"
+
+  #############################################
+  # GIT SERVER
+  #############################################
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - gitea_data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      - GITEA__database__DB_TYPE=postgres
+      - GITEA__database__HOST=postgres:5432
+      - GITEA__database__NAME=gitea
+      - GITEA__database__USER=${POSTGRES_USER:-admin}
+      - GITEA__database__PASSWD=${POSTGRES_PASSWORD}
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitea.rule=Host(`git.homeserver.local`)"
+      - "traefik.http.routers.gitea.entrypoints=web"
+      - "traefik.http.services.gitea.loadbalancer.server.port=3000"
+    depends_on:
+      - postgres
+
+  #############################################
+  # CI/CD
+  #############################################
+  drone-server:
+    image: drone/drone:2
+    container_name: drone-server
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - drone_data:/data
+    environment:
+      - DRONE_GITEA_SERVER=http://gitea:3000
+      - DRONE_GITEA_CLIENT_ID=${GITEA_OAUTH_CLIENT_ID}
+      - DRONE_GITEA_CLIENT_SECRET=${GITEA_OAUTH_CLIENT_SECRET}
+      - DRONE_RPC_SECRET=${DRONE_RPC_SECRET}
+      - DRONE_SERVER_HOST=drone.homeserver.local
+      - DRONE_SERVER_PROTO=http
+      - DRONE_USER_CREATE=username:admin,admin:true
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.drone.rule=Host(`drone.homeserver.local`)"
+      - "traefik.http.routers.drone.entrypoints=web"
+      - "traefik.http.services.drone.loadbalancer.server.port=80"
+    depends_on:
+      - gitea
+
+  drone-runner:
+    image: drone/drone-runner-docker:1
+    container_name: drone-runner
+    restart: unless-stopped
+    networks:
+      - backend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DRONE_RPC_PROTO=http
+      - DRONE_RPC_HOST=drone-server
+      - DRONE_RPC_SECRET=${DRONE_RPC_SECRET}
+      - DRONE_RUNNER_CAPACITY=2
+      - DRONE_RUNNER_NAME=docker-runner
+      - TZ=${TZ:-Europe/Berlin}
+    depends_on:
+      - drone-server
+
+  #############################################
+  # CODE SERVER
+  #############################################
+  code-server:
+    image: codercom/code-server:latest
+    container_name: code-server
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - code_data:/home/coder
+      - ../:/home/coder/homeserver:ro
+    environment:
+      - PASSWORD=${CODE_SERVER_PASSWORD}
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.code.rule=Host(`code.homeserver.local`)"
+      - "traefik.http.routers.code.entrypoints=web"
+      - "traefik.http.services.code.loadbalancer.server.port=8443"
+
+  #############################################
+  # DOCKER REGISTRY
+  #############################################
+  registry:
+    image: registry:2
+    container_name: docker-registry
+    restart: unless-stopped
+    networks:
+      - frontend
+    volumes:
+      - registry_data:/var/lib/registry
+    environment:
+      - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.registry.rule=Host(`registry.homeserver.local`)"
+      - "traefik.http.routers.registry.entrypoints=web"
+      - "traefik.http.services.registry.loadbalancer.server.port=5000"
+
+  registry-ui:
+    image: joxit/docker-registry-ui:latest
+    container_name: registry-ui
+    restart: unless-stopped
+    networks:
+      - frontend
+    environment:
+      - SINGLE_REGISTRY=true
+      - REGISTRY_TITLE=Homeserver Docker Registry
+      - REGISTRY_URL=http://registry:5000
+      - DELETE_IMAGES=true
+      - SHOW_CONTENT_DIGEST=true
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.registry-ui.rule=Host(`registry-ui.homeserver.local`)"
+      - "traefik.http.routers.registry-ui.entrypoints=web"
+      - "traefik.http.services.registry-ui.loadbalancer.server.port=80"
+    depends_on:
+      - registry
+
+  #############################################
+  # WEB SERVER
+  #############################################
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-webserver
+    restart: unless-stopped
+    networks:
+      - frontend
+    volumes:
+      - ../examples/websites:/usr/share/nginx/html:ro
+      - ../configs/nginx/sites:/etc/nginx/conf.d:ro
+    environment:
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=Host(`www.homeserver.local`)"
+      - "traefik.http.routers.web.entrypoints=web"
+      - "traefik.http.services.web.loadbalancer.server.port=80"
+
+  #############################################
+  # HOMEPAGE DASHBOARD
+  #############################################
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    networks:
+      - frontend
+    volumes:
+      - ../configs/homepage:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - TZ=${TZ:-Europe/Berlin}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homepage.rule=Host(`home.homeserver.local`)"
+      - "traefik.http.routers.homepage.entrypoints=web"
+      - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+
+  #############################################
+  # WATCHTOWER (Auto-Updates)
+  #############################################
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *
+      - WATCHTOWER_NOTIFICATIONS=email
+      - WATCHTOWER_NOTIFICATION_EMAIL_FROM=homeserver@local
+      - WATCHTOWER_NOTIFICATION_EMAIL_TO=admin@local
+      - TZ=${TZ:-Europe/Berlin}

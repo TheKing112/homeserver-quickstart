@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Example: Personal Blog
+  blog:
+    image: ghost:latest
+    container_name: blog
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    environment:
+      - NODE_ENV=production
+      - url=https://blog.homeserver.local
+    volumes:
+      - ./data/blog:/var/lib/ghost/content
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.blog.rule=Host(`blog.homeserver.local`)
+      - traefik.http.routers.blog.entrypoints=web
+      - traefik.http.routers.blog.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=admin:${HASH}
+      - traefik.http.services.blog.loadBalancer.server.port=2368
+  
+  # Example: File Manager
+  file-manager:
+    image: filebrowser/filebrowser:latest
+    container_name: file-manager
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    environment:
+      - TZ=${TZ:-Europe/Berlin}
+    volumes:
+      - /home/${USER}:/srv
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.file-manager.rule=Host(`files.homeserver.local`)
+      - traefik.http.routers.file-manager.entrypoints=web
+      - traefik.http.routers.file-manager.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=admin:${HASH}
+      - traefik.http.services.file-manager.loadBalancer.server.port=80
+  
+  # Example: RSS Reader
+  rss-reader:
+    image: wallabag/wallabag:latest
+    container_name: wallabag
+    restart: unless-stopped
+    networks:
+      - frontend
+      - backend
+    environment:
+      - DB_DRIVER=pdo_mysql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=wallabag
+      - DB_USER=wallabag
+      - DB_PASSWORD=wallabag_password
+      - MAILER_HOST=smtp.gmail.com
+      - MAILER_PORT=587
+      - MAILER_USERNAME=${MAILER_USERNAME}
+      - MAILER_PASSWORD=${MAILER_PASSWORD}
+      - MAILER_ENCRYPTION=tls
+      - URL=http://wallabag.homeserver.local
+    depends_on:
+      - postgres
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.wallabag.rule=Host(`wallabag.homeserver.local`)
+      - traefik.http.routers.wallabag.entrypoints=web
+      - traefik.http.routers.wallabag.middlewares=auth
+      - traefik.http.middlewares.auth.basicauth.users=admin:${HASH}
+      - traefik.http.services.wallabag.loadBalancer.server.port=80

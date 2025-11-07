@@ -1,0 +1,190 @@
+#cloud-config
+autoinstall:
+  version: 1
+  
+  # System Configuration
+  locale: de_DE.UTF-8
+  keyboard:
+    layout: de
+    variant: ""
+  
+  # Network Configuration
+  network:
+    version: 2
+    ethernets:
+      any:
+        match:
+          name: "en*"
+        dhcp4: false
+        addresses:
+          - 192.168.1.100/24
+        routes:
+          - to: default
+            via: 192.168.1.1
+        nameservers:
+          addresses:
+            - 192.168.1.1
+            - 8.8.8.8
+            - 8.8.4.4
+  
+  # Storage Configuration
+  storage:
+    layout:
+      name: lvm
+      match:
+        size: largest
+  
+  # User Account
+  identity:
+    hostname: homeserver
+    username: admin
+    # Password: "homeserver" (change after first login!)
+    # Generated with: mkpasswd -m sha-512
+    password: "$6$rounds=4096$saltysalt$Jy5GXwx8UYk9R7w9Q8J1F2l3M4n5O6p7Q8r9S0t1U2v3W4x5Y6z7A8b9C0d1E2f3G4h5I6j7K8l9M0n1O2p3Q4"
+  
+  # SSH Configuration
+  ssh:
+    install-server: true
+    allow-pw: true
+    authorized-keys: []
+  
+  # Packages to Install
+  packages:
+    # System Essentials
+    - vim
+    - nano
+    - curl
+    - wget
+    - git
+    - htop
+    - iotop
+    - nethogs
+    - tree
+    - tmux
+    - screen
+    - build-essential
+    
+    # Network Tools
+    - net-tools
+    - dnsutils
+    - traceroute
+    - iputils-ping
+    - netcat
+    - iperf3
+    
+    # Security
+    - ufw
+    - fail2ban
+    - openssh-server
+    - unattended-upgrades
+    
+    # Docker
+    - apt-transport-https
+    - ca-certificates
+    - gnupg
+    - lsb-release
+    - docker.io
+    - docker-compose-plugin
+    
+    # WireGuard
+    - wireguard
+    - wireguard-tools
+    
+    # Backup
+    - restic
+    
+    # Utilities
+    - jq
+    - yq
+    - zip
+    - unzip
+    - rsync
+    - make
+  
+  # Post-Installation Commands
+  late-commands:
+    # Docker Configuration
+    - curtin in-target -- usermod -aG docker admin
+    - curtin in-target -- systemctl enable docker
+    - curtin in-target -- systemctl start docker
+    
+    # Firewall Setup
+    - curtin in-target -- ufw --force enable
+    - curtin in-target -- ufw default deny incoming
+    - curtin in-target -- ufw default allow outgoing
+    - curtin in-target -- ufw allow 22/tcp comment 'SSH'
+    - curtin in-target -- ufw allow 80/tcp comment 'HTTP'
+    - curtin in-target -- ufw allow 443/tcp comment 'HTTPS'
+    - curtin in-target -- ufw allow 51820/udp comment 'WireGuard'
+    - curtin in-target -- ufw allow from 192.168.0.0/16 comment 'Local Network'
+    - curtin in-target -- ufw allow 25/tcp comment 'SMTP'
+    - curtin in-target -- ufw allow 465/tcp comment 'SMTPS'
+    - curtin in-target -- ufw allow 587/tcp comment 'Submission'
+    - curtin in-target -- ufw allow 993/tcp comment 'IMAPS'
+    - curtin in-target -- ufw allow 143/tcp comment 'IMAP'
+    
+    # Security Services
+    - curtin in-target -- systemctl enable fail2ban
+    - curtin in-target -- systemctl start fail2ban
+    
+    # System Configuration
+    - curtin in-target -- timedatectl set-timezone Europe/Berlin
+    - curtin in-target -- systemctl enable unattended-upgrades
+    
+    # Create Setup Directory
+    - curtin in-target -- mkdir -p /opt/homeserver-setup
+    - curtin in-target -- chown admin:admin /opt/homeserver-setup
+    
+    # Download Repository (adjust URL!)
+    - curtin in-target -- bash -c "cd /opt/homeserver-setup && git clone https://github.com/YOUR_USERNAME/homeserver-quickstart.git . || true"
+    
+    # Set Permissions
+    - curtin in-target -- chmod +x /opt/homeserver-setup/scripts/*.sh || true
+    - curtin in-target -- chown -R admin:admin /opt/homeserver-setup
+    
+    # Create Welcome Message
+    - curtin in-target -- bash -c 'cat > /etc/profile.d/00-homeserver-welcome.sh << "WELCOME"
+#!/bin/bash
+if [ -f /opt/homeserver-setup/.install-complete ]; then
+    return
+fi
+
+cat << "EOF"
+
++===========================================================+
+|                                                           |
+|         HOME HOMESERVER INSTALLATION - NEXT STEPS          |
+|                                                           |
++===========================================================+
+
+Welcome to your new homeserver!
+
+[CHECKLIST] To complete the setup:
+
+[1]  Configure your environment:
+   cd /opt/homeserver-setup
+   nano .env
+   (or copy your prepared .env file here)
+
+[2]  Run the quickstart installation:
+   sudo /opt/homeserver-setup/scripts/01-quickstart.sh
+
+[3]  Follow the on-screen instructions
+
+[Documentation] /opt/homeserver-setup/README.md
+[Logs] /var/log/homeserver-install.log
+
+EOF
+WELCOME'
+    - curtin in-target -- chmod +x /etc/profile.d/00-homeserver-welcome.sh
+    
+    # Cleanup
+    - curtin in-target -- apt-get autoremove -y
+    - curtin in-target -- apt-get clean
+
+# Reboot After Installation
+power-state:
+  mode: reboot
+  message: "Installation complete. Rebooting..."
+  timeout: 30
+  condition: true

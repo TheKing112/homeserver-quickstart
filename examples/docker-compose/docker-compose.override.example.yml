@@ -1,0 +1,35 @@
+version: '3.8'
+
+# This file shows examples of how to override or extend the base configuration
+# Copy to docker-compose.override.yml and customize for your needs
+
+services:
+  # Example: Add custom environment variables
+  nginx:
+    environment:
+      - CUSTOM_ENV=production
+      - DEBUG_MODE=false
+  
+  # Example: Add custom volumes
+  postgres:
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./backups:/backups
+  
+  # Example: Override port mapping
+  traefik:
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+  
+  # Example: Add new service
+  custom-service:
+    image: nginx:alpine
+    ports:
+      - "3000:80"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.custom.rule=Host(`custom.homeserver.local`)
+    networks:
+      - frontend
