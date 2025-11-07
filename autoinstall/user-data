@@ -136,7 +136,7 @@ autoinstall:
     - curtin in-target -- chown admin:admin /opt/homeserver-setup
     
     # Download Repository (adjust URL!)
-    - curtin in-target -- bash -c "cd /opt/homeserver-setup && git clone https://github.com/YOUR_USERNAME/homeserver-quickstart.git . || true"
+    - curtin in-target -- bash -c "cd /opt/homeserver-setup && git clone https://github.com/TheKing112/homeserver-quickstart.git . || true"
     
     # Set Permissions
     - curtin in-target -- chmod +x /opt/homeserver-setup/scripts/*.sh || true
