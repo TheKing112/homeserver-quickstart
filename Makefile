@@ -9,7 +9,7 @@ start:
 	@echo "OK All services started"
 
 stop:
-	@echo "â¸ï¸  Stopping all services..."
+	@echo "STOP Stopping all services..."
 	@docker compose down
 	@docker compose -f docker-compose/docker-compose.monitoring.yml down
 	@docker compose -f docker-compose/docker-compose.mail.yml down
@@ -33,12 +33,12 @@ backup:
 	@sudo bash scripts/backup.sh
 
 update:
-	@echo "â¬†ï¸  Updating all services..."
+	@echo "UPDATING Updating all services..."
 	@docker compose pull
 	@docker compose up -d
 	@echo "OK Services updated"
 
 clean:
-	@echo "ðŸ§¹ Cleaning up..."
+	@echo "CLEAN Cleaning up..."
 	@docker system prune -af --volumes
 	@echo "OK Cleanup complete"
