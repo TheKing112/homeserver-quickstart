@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Homeserver Mail Management API
 RESTful API for managing Mailu mail server
