@@ -34,9 +34,9 @@ echo ""
 # Functions
 print_step() {
     echo ""
-    echo -e "${BLUE}${BOLD}â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”${NC}"
+    echo -e "${BLUE}${BOLD}===========================================${NC}"
     echo -e "${CYAN}${BOLD}RUN $1${NC}"
-    echo -e "${BLUE}${BOLD}â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”${NC}"
+    echo -e "${BLUE}${BOLD}===========================================${NC}"
 }
 
 print_success() {
@@ -118,12 +118,12 @@ clear
 cat << "EOF"
 
 +===========================================================+
-|              OK INSTALLATION COMPLETE! OK                  |
+|              OK INSTALLATION COMPLETE! OK                 |
 +===========================================================+
 
 EOF
 
-echo -e "${GREEN}${BOLD}ðŸŽ‰ Your homeserver is ready!${NC}"
+echo -e "${GREEN}${BOLD}Your homeserver is ready!${NC}"
 echo ""
 echo -e "${CYAN}Access your services at:${NC}"
 echo "  STAT Dashboard:  http://home.homeserver.local"
