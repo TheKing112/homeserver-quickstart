@@ -180,9 +180,15 @@ chmod 600 .env
 
 echo -e "${GREEN}✓ Secrets generated successfully!${NC}"
 echo ""
+<<<<<<< HEAD
 echo -e "${CYAN}================================================================${NC}"
 echo -e "${YELLOW}         IMPORTANT - SECRETS SAVED TO .env FILE${NC}"
 echo -e "${CYAN}================================================================${NC}"
+=======
+echo -e "${CYAN}============================================${NC}"
+echo -e "${YELLOW}Checklist: IMPORTANT PASSWORDS (save to password manager!)${NC}"
+echo -e "${CYAN}============================================${NC}"
+>>>>>>> 12ffc10e51b5ddd256ba4dfe740324cde8144af0
 echo ""
 echo -e "${RED}⚠ WARNING: Do NOT share these credentials!${NC}"
 echo ""
@@ -192,6 +198,7 @@ echo -e "${YELLOW}To view your secrets (use with caution):${NC}"
 echo "  cat .env | grep PASSWORD"
 echo "  cat .env | grep TOKEN"
 echo ""
+<<<<<<< HEAD
 echo -e "${YELLOW}CRITICAL: Save these to your password manager NOW:${NC}"
 echo "  - PostgreSQL password"
 echo "  - MySQL root password"  
@@ -203,6 +210,9 @@ echo "  - Vaultwarden admin token"
 echo "  - Restic backup password"
 echo "  - MCP API Key"
 echo "  - Traefik Dashboard password (user: admin, password in .env)"
+=======
+echo -e "${CYAN}============================================${NC}"
+>>>>>>> 12ffc10e51b5ddd256ba4dfe740324cde8144af0
 echo ""
 echo -e "${CYAN}================================================================${NC}"
 echo -e "${YELLOW}NEXT STEPS:${NC}"
