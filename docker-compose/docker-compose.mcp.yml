@@ -2,8 +2,10 @@ version: '3.8'
 
 networks:
   frontend:
+    name: homeserver_frontend
     external: true
   backend:
+    name: homeserver_backend
     external: true
 
 services:
@@ -15,14 +17,15 @@ services:
     networks:
       - frontend
     environment:
-      - TZ=
+      - TZ=${TZ:-Europe/Berlin}
       - NODE_ENV=production
+      - MCP_API_KEY=${MCP_API_KEY}
+      - ALLOWED_ORIGINS=${MCP_ALLOWED_ORIGINS:-http://localhost:3000}
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.mcp-dashboard.rule=Host(mcp-dashboard.homeserver.local)
-      - traefik.http.routers.mcp-dashboard.entrypoints=web
-      - traefik.http.routers.mcp-dashboard.middlewares=auth
-      - traefik.http.middlewares.auth.basicauth.users=admin:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-dashboard.rule=Host(`mcp-dashboard.homeserver.local`)"
+      - "traefik.http.routers.mcp-dashboard.entrypoints=web"
+      - "traefik.http.services.mcp-dashboard.loadbalancer.server.port=3000"
     
   # MCP Filesystem
   mcp-fs:
@@ -31,16 +34,17 @@ services:
     restart: unless-stopped
     networks:
       - backend
+      - frontend
     environment:
-      - TZ=
+      - TZ=${TZ:-Europe/Berlin}
       - NODE_ENV=production
+      - MCP_API_KEY=${MCP_API_KEY}
+      - ALLOWED_ORIGINS=${MCP_ALLOWED_ORIGINS:-http://localhost:3000}
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.mcp-fs.rule=Host(mcp-fs.homeserver.local)
-      - traefik.http.routers.mcp-fs.entrypoints=web
-      - traefik.http.routers.mcp-fs.middlewares=auth
-      - traefik.http.middlewares.auth.basicauth.users=admin:
-      - traefik.http.services.mcp-fs.loadBalancer.server.port=3000
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-fs.rule=Host(`mcp-fs.homeserver.local`)"
+      - "traefik.http.routers.mcp-fs.entrypoints=web"
+      - "traefik.http.services.mcp-fs.loadbalancer.server.port=3000"
     
   # MCP Docker
   mcp-docker:
@@ -49,18 +53,18 @@ services:
     restart: unless-stopped
     networks:
       - backend
+      - frontend
     environment:
-      - TZ=
+      - TZ=${TZ:-Europe/Berlin}
       - NODE_ENV=production
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - MCP_API_KEY=${MCP_API_KEY}
+      - ALLOWED_ORIGINS=${MCP_ALLOWED_ORIGINS:-http://localhost:3000}
+      - DOCKER_HOST=tcp://docker-proxy:2375
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.mcp-docker.rule=Host(mcp-docker.homeserver.local)
-      - traefik.http.routers.mcp-docker.entrypoints=web
-      - traefik.http.routers.mcp-docker.middlewares=auth
-      - traefik.http.middlewares.auth.basicauth.users=admin:
-      - traefik.http.services.mcp-docker.loadBalancer.server.port=3000
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-docker.rule=Host(`mcp-docker.homeserver.local`)"
+      - "traefik.http.routers.mcp-docker.entrypoints=web"
+      - "traefik.http.services.mcp-docker.loadbalancer.server.port=3000"
     
   # MCP Database
   mcp-db:
@@ -69,35 +73,43 @@ services:
     restart: unless-stopped
     networks:
       - backend
+      - frontend
     environment:
-      - TZ=
+      - TZ=${TZ:-Europe/Berlin}
       - NODE_ENV=production
-    depends_on:
-      - postgres
-      - mysql
-      - redis
+      - MCP_API_KEY=${MCP_API_KEY}
+      - ALLOWED_ORIGINS=${MCP_ALLOWED_ORIGINS:-http://localhost:3000}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USER=${MCP_POSTGRES_USER:-mcp_readonly}
+      - POSTGRES_PASSWORD=${MCP_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-homeserver}
+      - MYSQL_HOST=mariadb
+      - MYSQL_USER=${MCP_MYSQL_USER:-mcp_readonly}
+      - MYSQL_PASSWORD=${MCP_MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-homeserver}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.mcp-db.rule=Host(mcp-db.homeserver.local)
-      - traefik.http.routers.mcp-db.entrypoints=web
-      - traefik.http.routers.mcp-db.middlewares=auth
-      - traefik.http.middlewares.auth.basicauth.users=admin:
-      - traefik.http.services.mcp-db.loadBalancer.server.port=3000
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-db.rule=Host(`mcp-db.homeserver.local`)"
+      - "traefik.http.routers.mcp-db.entrypoints=web"
+      - "traefik.http.services.mcp-db.loadbalancer.server.port=3000"
     
   # MCP HTTP Client
   mcp-http:
-    build: ../mcp-servers/http
+    build: ../mcp-servers/http-client
     container_name: mcp-http
     restart: unless-stopped
     networks:
       - backend
+      - frontend
     environment:
-      - TZ=
+      - TZ=${TZ:-Europe/Berlin}
       - NODE_ENV=production
+      - MCP_API_KEY=${MCP_API_KEY}
+      - ALLOWED_ORIGINS=${MCP_ALLOWED_ORIGINS:-http://localhost:3000}
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.mcp-http.rule=Host(mcp-http.homeserver.local)
-      - traefik.http.routers.mcp-http.entrypoints=web
-      - traefik.http.routers.mcp-http.middlewares=auth
-      - traefik.http.middlewares.auth.basicauth.users=admin:
-      - traefik.http.services.mcp-http.loadBalancer.server.port=3000
+      - "traefik.enable=true"
+      - "traefik.http.routers.mcp-http.rule=Host(`mcp-http.homeserver.local`)"
+      - "traefik.http.routers.mcp-http.entrypoints=web"
+      - "traefik.http.services.mcp-http.loadbalancer.server.port=3000"

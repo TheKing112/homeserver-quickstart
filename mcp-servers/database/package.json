@@ -1,0 +1,23 @@
+{
+  "name": "mcp-database",
+  "version": "1.0.0",
+  "description": "MCP Database Management Server",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "mysql2": "^3.6.0",
+    "redis": "^4.6.7",
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "morgan": "^1.10.0",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

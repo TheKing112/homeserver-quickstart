@@ -19,7 +19,7 @@ echo ""
 
 # Functions
 generate_password() {
-    openssl rand -base64 48 | tr -d "=+/" | cut -c1-${1:-32}
+    openssl rand -hex ${1:-16}
 }
 
 generate_token() {
@@ -53,6 +53,34 @@ CODE_SERVER_PASSWORD=$(generate_password 24)
 GRAFANA_ADMIN_PASSWORD=$(generate_password 24)
 RESTIC_PASSWORD=$(generate_password 32)
 VAULTWARDEN_ADMIN_TOKEN=$(generate_token 64)
+MCP_API_KEY=$(generate_token 64)
+
+# Traefik Dashboard Auth (Basic Auth)
+TRAEFIK_USER="admin"
+TRAEFIK_PASSWORD=$(generate_password 24)
+if command -v htpasswd &> /dev/null; then
+    TRAEFIK_DASHBOARD_AUTH=$(htpasswd -nb admin "$TRAEFIK_PASSWORD")
+else
+    echo -e "${RED}ERROR: htpasswd not found. Install apache2-utils:${NC}"
+    echo "  sudo apt install apache2-utils"
+    echo "  sudo dnf install httpd-tools"
+    exit 1
+fi
+
+# Admin UI Auth (for Portainer, Adminer, Redis Commander, Netdata, Grafana)
+ADMIN_UI_USER="admin"
+ADMIN_UI_PASSWORD=$(generate_password 24)
+ADMIN_UI_AUTH=$(htpasswd -nb "$ADMIN_UI_USER" "$ADMIN_UI_PASSWORD")
+
+# Registry Auth (for Docker Registry)
+REGISTRY_USER="registry"
+REGISTRY_PASSWORD=$(generate_password 24)
+REGISTRY_AUTH=$(htpasswd -nb "$REGISTRY_USER" "$REGISTRY_PASSWORD")
+
+# Create Registry htpasswd file
+mkdir -p configs/registry/auth
+echo "$REGISTRY_AUTH" > configs/registry/auth/htpasswd
+chmod 600 configs/registry/auth/htpasswd
 
 # Create .env file
 cat > .env << EOF
@@ -114,6 +142,27 @@ CODE_SERVER_PASSWORD=${CODE_SERVER_PASSWORD}
 GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
 
 # ================================
+# MCP SERVICES
+# ================================
+MCP_API_KEY=${MCP_API_KEY}
+
+# ================================
+# TRAEFIK DASHBOARD
+# ================================
+TRAEFIK_ACME_EMAIL=your-email@example.com
+TRAEFIK_DASHBOARD_AUTH=${TRAEFIK_DASHBOARD_AUTH}
+
+# ================================
+# ADMIN UI AUTH
+# ================================
+ADMIN_UI_AUTH=${ADMIN_UI_AUTH}
+
+# ================================
+# DOCKER REGISTRY
+# ================================
+REGISTRY_AUTH=${REGISTRY_AUTH}
+
+# ================================
 # BACKUP
 # ================================
 RESTIC_PASSWORD=${RESTIC_PASSWORD}
@@ -125,30 +174,38 @@ BACKUP_SCHEDULE=0 2 * * *
 VAULTWARDEN_ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN}
 EOF
 
+
 chmod 600 .env
 
-echo -e "${GREEN}OK Secrets generated successfully!${NC}"
+
+echo -e "${GREEN}✓ Secrets generated successfully!${NC}"
 echo ""
-echo -e "${CYAN}â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”${NC}"
-echo -e "${YELLOW}Checklist: IMPORTANT PASSWORDS (save to password manager!)${NC}"
-echo -e "${CYAN}â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”${NC}"
+echo -e "${CYAN}================================================================${NC}"
+echo -e "${YELLOW}         IMPORTANT - SECRETS SAVED TO .env FILE${NC}"
+echo -e "${CYAN}================================================================${NC}"
 echo ""
-echo -e "${YELLOW}Databases:${NC}"
-echo "  PostgreSQL: ${POSTGRES_PASSWORD}"
-echo "  MySQL Root: ${MYSQL_ROOT_PASSWORD}"
-echo "  Redis:      ${REDIS_PASSWORD}"
+echo -e "${RED}⚠ WARNING: Do NOT share these credentials!${NC}"
 echo ""
-echo -e "${YELLOW}Services:${NC}"
-echo "  Code Server: ${CODE_SERVER_PASSWORD}"
-echo "  Grafana:     ${GRAFANA_ADMIN_PASSWORD}"
-echo "  Mail API:    ${MAIL_API_TOKEN}"
+echo -e "${GREEN}Secrets have been securely saved to: .env${NC}"
 echo ""
-echo -e "${YELLOW}Backup:${NC}"
-echo "  Restic: ${RESTIC_PASSWORD}"
+echo -e "${YELLOW}To view your secrets (use with caution):${NC}"
+echo "  cat .env | grep PASSWORD"
+echo "  cat .env | grep TOKEN"
 echo ""
-echo -e "${CYAN}â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”${NC}"
+echo -e "${YELLOW}CRITICAL: Save these to your password manager NOW:${NC}"
+echo "  - PostgreSQL password"
+echo "  - MySQL root password"  
+echo "  - Redis password"
+echo "  - Mail API token"
+echo "  - Code Server password"
+echo "  - Grafana admin password"
+echo "  - Vaultwarden admin token"
+echo "  - Restic backup password"
+echo "  - MCP API Key"
+echo "  - Traefik Dashboard password (user: admin, password in .env)"
 echo ""
-echo -e "${YELLOW}WARNING NEXT STEPS:${NC}"
+echo -e "${CYAN}================================================================${NC}"
+echo -e "${YELLOW}NEXT STEPS:${NC}"
 echo ""
 echo "1. ${GREEN}Edit .env and configure:${NC}"
 echo "   - SMTP_USER and SMTP_PASSWORD"

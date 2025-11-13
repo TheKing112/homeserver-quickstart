@@ -7,8 +7,8 @@ services:
     container_name: blog
     restart: unless-stopped
     networks:
-      - frontend
-      - backend
+      - homeserver_frontend
+      - homeserver_backend
     environment:
       - NODE_ENV=production
       - url=https://blog.homeserver.local
@@ -20,7 +20,7 @@ services:
       - traefik.http.routers.blog.entrypoints=web
       - traefik.http.routers.blog.middlewares=auth
       - traefik.http.middlewares.auth.basicauth.users=admin:${HASH}
-      - traefik.http.services.blog.loadBalancer.server.port=2368
+      - traefik.http.services.blog.loadbalancer.server.port=2368
   
   # Example: File Manager
   file-manager:
@@ -28,8 +28,8 @@ services:
     container_name: file-manager
     restart: unless-stopped
     networks:
-      - frontend
-      - backend
+      - homeserver_frontend
+      - homeserver_backend
     environment:
       - TZ=${TZ:-Europe/Berlin}
     volumes:
@@ -40,7 +40,7 @@ services:
       - traefik.http.routers.file-manager.entrypoints=web
       - traefik.http.routers.file-manager.middlewares=auth
       - traefik.http.middlewares.auth.basicauth.users=admin:${HASH}
-      - traefik.http.services.file-manager.loadBalancer.server.port=80
+      - traefik.http.services.file-manager.loadbalancer.server.port=80
   
   # Example: RSS Reader
   rss-reader:
@@ -48,19 +48,19 @@ services:
     container_name: wallabag
     restart: unless-stopped
     networks:
-      - frontend
-      - backend
+      - homeserver_frontend
+      - homeserver_backend
     environment:
-      - DB_DRIVER=pdo_mysql
+      - DB_DRIVER=pdo_pgsql
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_NAME=wallabag
-      - DB_USER=wallabag
-      - DB_PASSWORD=wallabag_password
+      - DB_USER=${POSTGRES_USER:-admin}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
       - MAILER_HOST=smtp.gmail.com
       - MAILER_PORT=587
-      - MAILER_USERNAME=${MAILER_USERNAME}
-      - MAILER_PASSWORD=${MAILER_PASSWORD}
+      - MAILER_USERNAME=${SMTP_USER}
+      - MAILER_PASSWORD=${SMTP_PASSWORD}
       - MAILER_ENCRYPTION=tls
       - URL=http://wallabag.homeserver.local
     depends_on:
@@ -71,4 +71,4 @@ services:
       - traefik.http.routers.wallabag.entrypoints=web
       - traefik.http.routers.wallabag.middlewares=auth
       - traefik.http.middlewares.auth.basicauth.users=admin:${HASH}
-      - traefik.http.services.wallabag.loadBalancer.server.port=80
+      - traefik.http.services.wallabag.loadbalancer.server.port=80

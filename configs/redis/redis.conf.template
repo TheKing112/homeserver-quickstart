@@ -1,0 +1,27 @@
+# Redis Configuration Template
+# This file will be processed by envsubst to replace ${REDIS_PASSWORD}
+
+# Network
+bind 0.0.0.0
+protected-mode yes
+port 6379
+
+# Security
+requirepass ${REDIS_PASSWORD}
+
+# Persistence
+appendonly yes
+appendfilename "appendonly.aof"
+appendfsync everysec
+
+# Memory
+maxmemory 256mb
+maxmemory-policy allkeys-lru
+
+# Performance
+save 900 1
+save 300 10
+save 60 10000
+
+# Logging
+loglevel notice

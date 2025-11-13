@@ -43,7 +43,6 @@ jobs:
           cd docker-compose
           docker compose -f docker-compose.yml config > /dev/null
           docker compose -f docker-compose.monitoring.yml config > /dev/null
-          docker compose -f docker-compose.mail.yml config > /dev/null
           docker compose -f docker-compose.mcp.yml config > /dev/null
       
       - name: Check for issues

@@ -1,0 +1,3 @@
+# Registry authentication directory
+# Generate htpasswd file here:
+# htpasswd -Bc htpasswd admin

@@ -1,16 +1,18 @@
-FROM node:18-alpine
+FROM node:20-alpine
+
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 
 WORKDIR /app
 
-# Install dependencies
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --only=production && npm cache clean --force
 
-# Copy application
 COPY . .
 
-# Expose port
+RUN chown -R nodejs:nodejs /app
+
+USER nodejs
+
 EXPOSE 3000
 
-# Start application
-CMD [\
+CMD ["npm", "start"]

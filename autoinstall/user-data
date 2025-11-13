@@ -38,15 +38,20 @@ autoinstall:
   identity:
     hostname: homeserver
     username: admin
-    # Password: "homeserver" (change after first login!)
+    # Password: "homeserver" - MUST BE CHANGED ON FIRST LOGIN!
     # Generated with: mkpasswd -m sha-512
     password: "$6$IhHhYZJQ2AGizold$oXedOYAzeI7A2O.OMW7RwPsMcDKChB9luzKOKtuwz2HCBFPcOVU.8Y0APBqF2eN0/Hl8INkHudgvsg5ijD9fW1"
+    # Force password change on first login (SECURITY)
+    expire: true
   
   # SSH Configuration
   ssh:
     install-server: true
-    allow-pw: true
+    allow-pw: true  # WARNING: Change to false and use SSH keys for production!
     authorized-keys: []
+    # For SSH key-based auth (recommended):
+    # authorized-keys:
+    #   - ssh-ed25519 AAAA... your-key-here
   
   # Packages to Install
   packages:

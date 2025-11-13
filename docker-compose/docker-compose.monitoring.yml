@@ -2,8 +2,10 @@ version: '3.8'
 
 networks:
   frontend:
+    name: homeserver_frontend
     external: true
   backend:
+    name: homeserver_backend
     external: true
 
 volumes:
@@ -15,39 +17,38 @@ services:
   # NETDATA
   #############################################
   netdata:
-    image: netdata/netdata:latest
+    image: netdata/netdata:v2.1.3
     container_name: netdata
     restart: unless-stopped
     pid: host
     cap_add:
       - SYS_PTRACE
-      - SYS_ADMIN
-    security_opt:
-      - apparmor:unconfined
     networks:
       - frontend
+      - backend
     volumes:
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       - TZ=${TZ:-Europe/Berlin}
+      - DOCKER_HOST=tcp://docker-proxy:2375
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.netdata.rule=Host(`netdata.homeserver.local`)"
       - "traefik.http.routers.netdata.entrypoints=web"
+      - "traefik.http.routers.netdata.middlewares=admin-auth"
       - "traefik.http.services.netdata.loadbalancer.server.port=19999"
 
   #############################################
   # PROMETHEUS
   #############################################
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.1.0
     container_name: prometheus
     restart: unless-stopped
-    user: "0"
+    user: "65534"
     networks:
       - frontend
       - backend
@@ -66,16 +67,18 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.prometheus.rule=Host(`prometheus.homeserver.local`)"
       - "traefik.http.routers.prometheus.entrypoints=web"
+      - "traefik.http.routers.prometheus.middlewares=admin-auth"
+      - "traefik.http.middlewares.admin-auth.basicauth.users=${ADMIN_UI_AUTH}"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
 
   #############################################
   # GRAFANA
   #############################################
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.4.0
     container_name: grafana
     restart: unless-stopped
-    user: "0"
+    user: "472"
     networks:
       - frontend
       - backend
@@ -100,7 +103,7 @@ services:
   # NODE EXPORTER
   #############################################
   node-exporter:
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.8.2
     container_name: node-exporter
     restart: unless-stopped
     networks:
@@ -120,7 +123,7 @@ services:
   # CADVISOR
   #############################################
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
+    image: gcr.io/cadvisor/cadvisor:v0.51.0
     container_name: cadvisor
     restart: unless-stopped
     networks:
@@ -130,7 +133,6 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
-    privileged: true
     devices:
       - /dev/kmsg
     environment:

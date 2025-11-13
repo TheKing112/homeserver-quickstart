@@ -2,8 +2,10 @@ version: '3.8'
 
 networks:
   frontend:
+    name: homeserver_frontend
     driver: bridge
   backend:
+    name: homeserver_backend
     driver: bridge
     internal: true
 
@@ -21,6 +23,38 @@ volumes:
 
 services:
   #############################################
+  # DOCKER SOCKET PROXY
+  #############################################
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:0.2.0
+    container_name: docker-socket-proxy
+    restart: unless-stopped
+    networks:
+      - backend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - CONTAINERS=1
+      - SERVICES=1
+      - TASKS=1
+      - NETWORKS=1
+      - NODES=0
+      - BUILD=0
+      - COMMIT=0
+      - CONFIGS=0
+      - DISTRIBUTION=0
+      - EXEC=0
+      - IMAGES=1
+      - INFO=1
+      - PLUGINS=0
+      - POST=0
+      - SECRETS=0
+      - SESSION=0
+      - SWARM=0
+      - SYSTEM=0
+      - VOLUMES=1
+
+  #############################################
   # REVERSE PROXY
   #############################################
   traefik:
@@ -31,46 +65,71 @@ services:
       - no-new-privileges:true
     networks:
       - frontend
+      - backend
     ports:
       - "80:80"
       - "443:443"
-      - "8080:8080"
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../configs/traefik/traefik.yml:/traefik.yml:ro
       - ../configs/traefik/dynamic:/dynamic:ro
       - traefik_certs:/letsencrypt
     environment:
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 512m
+    mem_reservation: 128m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.rule=Host(`traefik.homeserver.local`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=web"
+      - "traefik.http.routers.traefik.middlewares=traefik-auth"
+      - "traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_DASHBOARD_AUTH}"
+    depends_on:
+      - docker-proxy
 
   #############################################
   # DOCKER MANAGEMENT
   #############################################
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ce:2.21.5
     container_name: portainer
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     networks:
       - frontend
+      - backend
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - portainer_data:/data
     environment:
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 256m
+    mem_reservation: 64m
+    cpus: 0.5
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.rule=Host(`portainer.homeserver.local`)"
       - "traefik.http.routers.portainer.entrypoints=web"
       - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+      - "traefik.http.routers.portainer.middlewares=admin-auth"
+      - "traefik.http.middlewares.admin-auth.basicauth.users=${ADMIN_UI_AUTH}"
+    command: -H tcp://docker-proxy:2375
+    depends_on:
+      - docker-proxy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   #############################################
   # DATABASES
@@ -88,6 +147,9 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB:-homeserver}
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 1g
+    mem_reservation: 256m
+    cpus: 2.0
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin}"]
       interval: 10s
@@ -108,6 +170,9 @@ services:
       - MYSQL_USER=${MYSQL_USER:-admin}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 1g
+    mem_reservation: 256m
+    cpus: 2.0
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -122,11 +187,13 @@ services:
       - backend
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+      - ../configs/redis:/usr/local/etc/redis:ro
+    command: redis-server /usr/local/etc/redis/redis.conf
     environment:
       - TZ=${TZ:-Europe/Berlin}
+      - REDISCLI_AUTH=${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD", "sh", "-c", "redis-cli -a $$REDISCLI_AUTH ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -135,7 +202,7 @@ services:
   # DATABASE UI
   #############################################
   adminer:
-    image: adminer:latest
+    image: adminer:4.8.1
     container_name: adminer
     restart: unless-stopped
     networks:
@@ -150,9 +217,10 @@ services:
       - "traefik.http.routers.adminer.rule=Host(`db.homeserver.local`)"
       - "traefik.http.routers.adminer.entrypoints=web"
       - "traefik.http.services.adminer.loadbalancer.server.port=8080"
+      - "traefik.http.routers.adminer.middlewares=admin-auth"
 
   redis-commander:
-    image: rediscommander/redis-commander:latest
+    image: rediscommander/redis-commander:0.8.1
     container_name: redis-commander
     restart: unless-stopped
     networks:
@@ -166,12 +234,13 @@ services:
       - "traefik.http.routers.redis.rule=Host(`redis.homeserver.local`)"
       - "traefik.http.routers.redis.entrypoints=web"
       - "traefik.http.services.redis.loadbalancer.server.port=8081"
+      - "traefik.http.routers.redis.middlewares=admin-auth"
 
   #############################################
   # SECURITY
   #############################################
   vaultwarden:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.32.5-alpine
     container_name: vaultwarden
     restart: unless-stopped
     networks:
@@ -179,9 +248,14 @@ services:
     volumes:
       - vaultwarden_data:/data
     environment:
-      - SIGNUPS_ALLOWED=true
+      - SIGNUPS_ALLOWED=false
       - ADMIN_TOKEN=${VAULTWARDEN_ADMIN_TOKEN}
       - TZ=${TZ:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.vault.rule=Host(`vault.homeserver.local`)"
@@ -192,7 +266,7 @@ services:
   # GIT SERVER
   #############################################
   gitea:
-    image: gitea/gitea:latest
+    image: gitea/gitea:1.22.6
     container_name: gitea
     restart: unless-stopped
     networks:
@@ -211,6 +285,11 @@ services:
       - GITEA__database__USER=${POSTGRES_USER:-admin}
       - GITEA__database__PASSWD=${POSTGRES_PASSWORD}
       - TZ=${TZ:-Europe/Berlin}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.gitea.rule=Host(`git.homeserver.local`)"
@@ -254,23 +333,23 @@ services:
     restart: unless-stopped
     networks:
       - backend
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - DRONE_RPC_PROTO=http
       - DRONE_RPC_HOST=drone-server
       - DRONE_RPC_SECRET=${DRONE_RPC_SECRET}
       - DRONE_RUNNER_CAPACITY=2
       - DRONE_RUNNER_NAME=docker-runner
+      - DOCKER_HOST=tcp://docker-proxy:2375
       - TZ=${TZ:-Europe/Berlin}
     depends_on:
       - drone-server
+      - docker-proxy
 
   #############################################
   # CODE SERVER
   #############################################
   code-server:
-    image: codercom/code-server:latest
+    image: codercom/code-server:4.96.2
     container_name: code-server
     restart: unless-stopped
     networks:
@@ -287,6 +366,12 @@ services:
       - "traefik.http.routers.code.rule=Host(`code.homeserver.local`)"
       - "traefik.http.routers.code.entrypoints=web"
       - "traefik.http.services.code.loadbalancer.server.port=8443"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   #############################################
   # DOCKER REGISTRY
@@ -299,17 +384,29 @@ services:
       - frontend
     volumes:
       - registry_data:/var/lib/registry
+      - ../configs/registry/auth:/auth:ro
     environment:
       - REGISTRY_STORAGE_DELETE_ENABLED=true
+      - REGISTRY_AUTH=htpasswd
+      - REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm
+      - REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd
       - TZ=${TZ:-Europe/Berlin}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.registry.rule=Host(`registry.homeserver.local`)"
       - "traefik.http.routers.registry.entrypoints=web"
       - "traefik.http.services.registry.loadbalancer.server.port=5000"
+      - "traefik.http.routers.registry.middlewares=registry-auth"
+      - "traefik.http.middlewares.registry-auth.basicauth.users=${REGISTRY_AUTH}"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000/v2/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   registry-ui:
-    image: joxit/docker-registry-ui:latest
+    image: joxit/docker-registry-ui:2.5.7
     container_name: registry-ui
     restart: unless-stopped
     networks:
@@ -320,12 +417,15 @@ services:
       - REGISTRY_URL=http://registry:5000
       - DELETE_IMAGES=true
       - SHOW_CONTENT_DIGEST=true
+      - REGISTRY_SECURED=true
+      - NGINX_PROXY_PASS_URL=http://registry:5000
       - TZ=${TZ:-Europe/Berlin}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.registry-ui.rule=Host(`registry-ui.homeserver.local`)"
       - "traefik.http.routers.registry-ui.entrypoints=web"
       - "traefik.http.services.registry-ui.loadbalancer.server.port=80"
+      - "traefik.http.routers.registry-ui.middlewares=registry-auth"
     depends_on:
       - registry
 
@@ -353,21 +453,30 @@ services:
   # HOMEPAGE DASHBOARD
   #############################################
   homepage:
-    image: ghcr.io/gethomepage/homepage:latest
+    image: ghcr.io/gethomepage/homepage:v0.10.6
     container_name: homepage
     restart: unless-stopped
     networks:
       - frontend
+      - backend
     volumes:
       - ../configs/homepage:/app/config
-      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
+      - DOCKER_HOST=tcp://docker-proxy:2375
       - TZ=${TZ:-Europe/Berlin}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.homepage.rule=Host(`home.homeserver.local`)"
       - "traefik.http.routers.homepage.entrypoints=web"
       - "traefik.http.services.homepage.loadbalancer.server.port=3000"
+    depends_on:
+      - docker-proxy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   #############################################
   # WATCHTOWER (Auto-Updates)
@@ -376,12 +485,15 @@ services:
     image: containrrr/watchtower
     container_name: watchtower
     restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - backend
     environment:
+      - DOCKER_HOST=tcp://docker-proxy:2375
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_SCHEDULE=0 0 4 * * *
       - WATCHTOWER_NOTIFICATIONS=email
       - WATCHTOWER_NOTIFICATION_EMAIL_FROM=homeserver@local
       - WATCHTOWER_NOTIFICATION_EMAIL_TO=admin@local
       - TZ=${TZ:-Europe/Berlin}
+    depends_on:
+      - docker-proxy

@@ -1,6 +1,26 @@
 #!/bin/bash
+set -euo pipefail
 
-API_URL="http://localhost:5000/api"
+# Load environment variables
+if [ ! -f ".env" ]; then
+    echo "ERROR: .env file not found"
+    echo "Please run this script from the homeserver-quickstart directory"
+    exit 1
+fi
+
+# Source .env file
+set -a
+source .env
+set +a
+
+# Validate required environment variables
+if [ -z "${MAIL_API_TOKEN:-}" ]; then
+    echo "ERROR: MAIL_API_TOKEN not set in .env file"
+    echo "Please generate secrets first: ./scripts/00-generate-secrets.sh"
+    exit 1
+fi
+
+API_URL="${MAIL_API_URL:-http://localhost:5000/api}"
 API_TOKEN="${MAIL_API_TOKEN}"
 
 GREEN='\033[0;32m'
@@ -29,12 +49,14 @@ api_call() {
 case "$1" in
     "add-domain")
         echo "Adding domain: $2"
-        api_call POST "domains" "{\"domain\": \"$2\"}"
+        DATA=$(jq -n --arg domain "$2" '{domain: $domain}')
+        api_call POST "domains" "$DATA"
         ;;
     "add-mailbox")
         QUOTA_BYTES=$((${5:-1000} * 1048576))
         echo "Creating mailbox: $2@$3"
-        api_call POST "mailboxes" "{\"email\": \"$2\", \"domain\": \"$3\", \"password\": \"$4\", \"quota_bytes\": $QUOTA_BYTES}"
+        DATA=$(jq -n --arg email "$2" --arg domain "$3" --arg password "$4" --argjson quota "$QUOTA_BYTES" '{email: $email, domain: $domain, password: $password, quota_bytes: $quota}')
+        api_call POST "mailboxes" "$DATA"
         ;;
     "list-mailboxes")
         api_call GET "mailboxes?domain=$2" | jq -r '.mailboxes[] | "\(.email) - \(.quota_bytes / 1048576)MB"'

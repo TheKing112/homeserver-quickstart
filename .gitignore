@@ -18,6 +18,7 @@ logs/
 secrets/
 .restic-password
 .wireguard-*
+configs/redis/redis.conf
 
 # OS
 .DS_Store
