@@ -12,6 +12,7 @@ volumes:
   postgres_data:
   mariadb_data:
   redis_data:
+  redis_insight_data:
   gitea_data:
   portainer_data:
   traefik_certs:
@@ -219,21 +220,22 @@ services:
       - "traefik.http.services.adminer.loadbalancer.server.port=8080"
       - "traefik.http.routers.adminer.middlewares=admin-auth"
 
-  redis-commander:
-    image: ghobadimhd/redis-commander:latest
-    container_name: redis-commander
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight
     restart: unless-stopped
     networks:
       - frontend
       - backend
+    volumes:
+      - redis_insight_data:/data
     environment:
-      - REDIS_HOSTS=local:redis:6379:0:${REDIS_PASSWORD}
       - TZ=${TZ:-Europe/Berlin}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.redis.rule=Host(`redis.homeserver.local`)"
       - "traefik.http.routers.redis.entrypoints=web"
-      - "traefik.http.services.redis.loadbalancer.server.port=8081"
+      - "traefik.http.services.redis.loadbalancer.server.port=5540"
       - "traefik.http.routers.redis.middlewares=admin-auth"
 
   #############################################
