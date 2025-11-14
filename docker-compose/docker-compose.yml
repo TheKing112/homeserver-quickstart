@@ -220,7 +220,7 @@ services:
       - "traefik.http.routers.adminer.middlewares=admin-auth"
 
   redis-commander:
-    image: rediscommander/redis-commander:0.8.1
+    image: ghobadimhd/redis-commander:latest
     container_name: redis-commander
     restart: unless-stopped
     networks:
