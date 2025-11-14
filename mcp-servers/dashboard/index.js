@@ -66,7 +66,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.get('/api/status', requireApiKey, (req, res) => {
+app.get('/api/status', (req, res) => {
   try {
     res.json({
       status: 'online',

@@ -1,9 +1,16 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 echo "Updating homeserver..."
 
-cd /opt/homeserver
+HOMESERVER_DIR="${HOMESERVER_DIR:-/opt/homeserver}"
+
+if [ ! -d "$HOMESERVER_DIR" ]; then
+    echo "ERROR: Homeserver directory not found: $HOMESERVER_DIR"
+    exit 1
+fi
+
+cd "$HOMESERVER_DIR" || exit 1
 
 echo "Pulling latest images..."
 docker compose -f docker-compose/docker-compose.yml pull

@@ -189,8 +189,8 @@ chmod +x scripts/00-generate-secrets.sh
 #### Schritt 3: Docker-Netzwerke erstellen
 
 ```bash
-docker network create frontend
-docker network create backend
+docker network create homeserver_frontend
+docker network create homeserver_backend
 ```
 
 #### Schritt 4: Firewall konfigurieren (falls aktiv)
@@ -306,7 +306,7 @@ Nach der Installation sind folgende Services verfügbar:
 |---------|-----|----------------|
 | **Homepage Dashboard** | http://home.homeserver.local | - |
 | **Portainer** | http://portainer.homeserver.local | Admin bei Erstbesuch anlegen |
-| **Traefik** | http://traefik.homeserver.local:8080 | - |
+| **Traefik** | http://traefik.homeserver.local | - |
 | **Grafana** | http://grafana.homeserver.local | admin / aus .env |
 | **Prometheus** | http://prometheus.homeserver.local | - |
 | **Netdata** | http://netdata.homeserver.local | - |

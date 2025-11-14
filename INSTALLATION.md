@@ -74,8 +74,8 @@ GITEA_OAUTH_CLIENT_SECRET=
 ### 3. Docker-Netzwerke erstellen
 
 ```bash
-docker network create frontend
-docker network create backend
+docker network create homeserver_frontend
+docker network create homeserver_backend
 ```
 
 ### 4. Services starten
@@ -217,7 +217,7 @@ docker logs traefik
 sudo bash -c 'echo "127.0.0.1 traefik.homeserver.local" >> /etc/hosts'
 
 # Browser öffnen
-http://traefik.homeserver.local:8080
+http://traefik.homeserver.local
 ```
 
 ---
@@ -273,7 +273,7 @@ Nach erfolgreicher Installation sind folgende Services verfügbar:
 | Service | URL | Beschreibung |
 |---------|-----|--------------|
 | **Homepage** | http://home.homeserver.local | Haupt-Dashboard |
-| **Traefik** | http://traefik.homeserver.local:8080 | Reverse Proxy Dashboard |
+| **Traefik** | http://traefik.homeserver.local | Reverse Proxy Dashboard |
 | **Portainer** | http://portainer.homeserver.local | Docker Management |
 | **Grafana** | http://grafana.homeserver.local | Monitoring & Visualisierung |
 | **Prometheus** | http://prometheus.homeserver.local | Metriken-Sammlung |
@@ -354,7 +354,7 @@ docker-compose -f docker-compose.yml config
 #!/bin/bash
 SERVICES=(
   "http://home.homeserver.local"
-  "http://traefik.homeserver.local:8080"
+  "http://traefik.homeserver.local"
   "http://portainer.homeserver.local"
   "http://grafana.homeserver.local"
 )

@@ -9,16 +9,13 @@ api:
 entryPoints:
   web:
     address: ":80"
-    http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
   websecure:
     address: ":443"
     http:
       tls:
         certResolver: letsencrypt
+  metrics:
+    address: ":8082"
 
 # Providers
 providers:
@@ -41,6 +38,7 @@ accessLog:
 # Metrics
 metrics:
   prometheus:
+    entryPoint: metrics
     addEntryPointsLabels: true
     addServicesLabels: true
     addRoutersLabels: true

@@ -2,6 +2,11 @@
 # This file will be processed by envsubst to replace ${REDIS_PASSWORD}
 
 # Network
+# Note: bind 0.0.0.0 is safe here because:
+# 1. Redis container is in internal 'backend' network only
+# 2. Port 6379 is NOT exposed to host
+# 3. protected-mode is enabled
+# 4. Authentication is required (requirepass)
 bind 0.0.0.0
 protected-mode yes
 port 6379

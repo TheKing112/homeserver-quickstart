@@ -29,6 +29,16 @@ http:
     compression:
       compress: {}
     
+    # IP Whitelist for internal monitoring tools
+    # Allow local network (adjust ranges to match your network)
+    internal-whitelist:
+      ipWhiteList:
+        sourceRange:
+          - "127.0.0.1/32"
+          - "192.168.0.0/16"
+          - "10.0.0.0/8"
+          - "172.16.0.0/12"
+    
     # Security Chain (Headers + Rate Limit + Compression)
     security-chain:
       chain:

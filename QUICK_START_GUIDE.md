@@ -46,7 +46,7 @@ docker ps
 Add-Content C:\Windows\System32\drivers\etc\hosts "192.168.1.100 home.homeserver.local"
 Add-Content C:\Windows\System32\drivers\etc\hosts "192.168.1.100 traefik.homeserver.local"
 Add-Content C:\Windows\System32\drivers\etc\hosts "192.168.1.100 portainer.homeserver.local"
-Add-Content C:\Windows\System32\drivers\etc\hosts "192.168.1.100 gitea.homeserver.local"
+Add-Content C:\Windows\System32\drivers\etc\hosts "192.168.1.100 git.homeserver.local"
 Add-Content C:\Windows\System32\drivers\etc\hosts "192.168.1.100 grafana.homeserver.local"
 
 # Oder Script verwenden:
@@ -65,7 +65,7 @@ cd Homeserver\homeserver-quickstart\windows-tools
 | Homepage | http://home.homeserver.local | - | - |
 | Traefik | http://traefik.homeserver.local | admin | `TRAEFIK_DASHBOARD_AUTH` (generiert) |
 | Portainer | http://portainer.homeserver.local | admin | `ADMIN_UI_PASSWORD` (generiert) |
-| Gitea | http://gitea.homeserver.local | admin | Bei Ersteinrichtung setzen |
+| Gitea | http://git.homeserver.local | admin | Bei Ersteinrichtung setzen |
 | Grafana | http://grafana.homeserver.local | admin | `GRAFANA_ADMIN_PASSWORD` |
 | Adminer | http://db.homeserver.local | admin | `ADMIN_UI_PASSWORD` |
 
@@ -80,7 +80,7 @@ cd Homeserver\homeserver-quickstart\windows-tools
 ### Gitea Setup
 
 ```bash
-# URL: http://gitea.homeserver.local
+# URL: http://git.homeserver.local
 # DB-Typ: PostgreSQL
 # Host: postgres:5432
 # DB: homeserver
@@ -112,7 +112,7 @@ docker compose restart drone-server drone-runner
 ```
 http://home.homeserver.local        # Homepage Dashboard
 http://portainer.homeserver.local   # Container Management
-http://gitea.homeserver.local       # Git Server
+http://git.homeserver.local       # Git Server
 http://code.homeserver.local        # VS Code Web
 http://grafana.homeserver.local     # Monitoring
 http://db.homeserver.local          # Adminer (DB UI)

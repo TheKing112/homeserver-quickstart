@@ -6,6 +6,8 @@ RESTful API for managing Mailu mail server
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import mysql.connector
 import mysql.connector.pooling
 from passlib.hash import bcrypt_sha256
@@ -19,6 +21,15 @@ app = Flask(__name__)
 # Parse and trim CORS origins
 ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv('MAIL_API_ALLOWED_ORIGINS', 'http://localhost:3000,http://localhost').split(',')]
 CORS(app, origins=ALLOWED_ORIGINS, supports_credentials=False)
+
+# Configure rate limiting
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+    strategy="fixed-window"
+)
 
 # Configuration
 MYSQL_HOST = os.getenv('MAIL_MYSQL_HOST', 'mariadb')
@@ -54,12 +65,12 @@ def validate_username(username):
 def validate_json_request():
     """Validate that request contains valid JSON"""
     if not request.is_json:
-        return jsonify({'error': 'Content-Type must be application/json'}), 400
+        return None, (jsonify({'error': 'Content-Type must be application/json'}), 400)
     
     try:
         data = request.get_json()
         if data is None:
-            return jsonify({'error': 'Invalid JSON body'}), 400
+            return None, (jsonify({'error': 'Invalid JSON body'}), 400)
         return data, None
     except Exception:
         return None, (jsonify({'error': 'Malformed JSON'}), 400)
@@ -157,6 +168,7 @@ def info():
 
 @app.route('/api/domains', methods=['GET'])
 @require_api_token
+@limiter.limit("30 per minute")
 def get_domains():
     """List all domains"""
     db = None
@@ -178,6 +190,7 @@ def get_domains():
 
 @app.route('/api/domains', methods=['POST'])
 @require_api_token
+@limiter.limit("10 per minute")
 def add_domain():
     """Add a new domain"""
     # Validate JSON request
@@ -288,6 +301,7 @@ def get_mailboxes():
 
 @app.route('/api/mailboxes', methods=['POST'])
 @require_api_token
+@limiter.limit("10 per minute")
 def add_mailbox():
     """Create a new mailbox"""
     # Validate JSON request
@@ -382,6 +396,7 @@ def delete_mailbox(email):
 
 @app.route('/api/mailboxes/<email>/password', methods=['PUT'])
 @require_api_token
+@limiter.limit("5 per minute")
 def change_password(email):
     """Change mailbox password"""
     # Validate email parameter

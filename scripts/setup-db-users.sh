@@ -29,16 +29,27 @@ echo -e "${BLUE}  HOMESERVER DATABASE USER SETUP${NC}"
 echo -e "${BLUE}=========================================${NC}"
 echo ""
 
-# Load environment variables
-if [ ! -f ".env" ]; then
-    echo -e "${RED}ERROR: .env file not found${NC}"
-    echo "Please run this script from the homeserver-quickstart directory"
-    exit 1
-fi
+# Secure .env loading function
+load_env_safe() {
+    local env_file="${1:-.env}"
+    if [ ! -f "$env_file" ]; then
+        echo -e "${RED}ERROR: .env file not found${NC}"
+        echo "Please run this script from the homeserver-quickstart directory"
+        return 1
+    fi
+    # Parse only valid KEY=VALUE lines, ignore comments and invalid syntax
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        # Match valid variable assignment (KEY=VALUE)
+        if [[ "$line" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            export "${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
+        fi
+    done < "$env_file"
+}
 
-set -a
-source .env
-set +a
+# Load environment variables
+load_env_safe .env || exit 1
 
 # Generate secure passwords if not set
 generate_password() {

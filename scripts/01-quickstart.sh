@@ -38,10 +38,6 @@ echo ""
 echo -e "${CYAN}Initialisiere Installation...${NC}"
 echo ""
 
-<<<<<<< HEAD
-# Installation starten
-bash "$INSTALL_DIR/install-homeserver.sh"
-=======
 # Functions
 print_step() {
     echo ""
@@ -64,15 +60,57 @@ if [ "$EUID" -ne 0 ]; then
     print_error "Please run as root (sudo)"
 fi
 
+# Check dependencies
+echo "Checking dependencies..."
+MISSING_DEPS=()
+
+if ! command -v docker &> /dev/null; then
+    MISSING_DEPS+=("docker")
+fi
+
+if ! docker compose version &> /dev/null 2>&1; then
+    MISSING_DEPS+=("docker-compose-plugin")
+fi
+
+if ! command -v envsubst &> /dev/null; then
+    MISSING_DEPS+=("envsubst (gettext-base)")
+fi
+
+if [ ${#MISSING_DEPS[@]} -ne 0 ]; then
+    print_error "Missing dependencies: ${MISSING_DEPS[*]}"
+    echo ""
+    echo "Install with:"
+    echo "  sudo apt install docker.io docker-compose-plugin gettext-base"
+    exit 1
+fi
+
+print_success "All dependencies available"
+echo ""
+
 # Check .env
 if [ ! -f ".env" ]; then
     print_error ".env file not found! Run 00-generate-secrets.sh first."
 fi
 
+# Secure .env loading function
+load_env_safe() {
+    local env_file="${1:-.env}"
+    if [ ! -f "$env_file" ]; then
+        return 1
+    fi
+    # Parse only valid KEY=VALUE lines, ignore comments and invalid syntax
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        # Match valid variable assignment (KEY=VALUE)
+        if [[ "$line" =~ ^[[:space:]]*([A-Za-z_][A-Za-z0-9_]*)=(.*)$ ]]; then
+            export "${BASH_REMATCH[1]}=${BASH_REMATCH[2]}"
+        fi
+    done < "$env_file"
+}
+
 # Load environment
-set -a
-source .env
-set +a
+load_env_safe .env
 
 print_step "1/10 - System Configuration"
 apt-get update -qq
@@ -80,21 +118,32 @@ sysctl -w net.ipv4.ip_forward=1 > /dev/null
 print_success "System configured"
 
 print_step "2/10 - Creating Directories"
-mkdir -p $INSTALL_DIR/{configs,scripts,data,websites,mcp-servers}
+mkdir -p "$INSTALL_DIR"/{configs,scripts,data,websites,mcp-servers}
 print_success "Directories created"
 
 print_step "3/10 - Copying Files"
-cp -r . $INSTALL_DIR/
-chown -R admin:admin $INSTALL_DIR
+cp -r . "$INSTALL_DIR"/
+if id "admin" &>/dev/null; then
+    chown -R admin:admin "$INSTALL_DIR"
+fi
 print_success "Files copied"
 
 print_step "4/10 - Docker Networks"
-docker network create frontend 2>/dev/null || true
-docker network create backend 2>/dev/null || true
+docker network create homeserver_frontend 2>/dev/null || true
+docker network create homeserver_backend 2>/dev/null || true
 print_success "Networks created"
 
+print_step "4.5/10 - Generating Redis Config"
+if [ -f "configs/redis/redis.conf.template" ] && [ ! -f "configs/redis/redis.conf" ]; then
+    envsubst < configs/redis/redis.conf.template > configs/redis/redis.conf
+    chmod 644 configs/redis/redis.conf
+    print_success "Redis config generated"
+else
+    print_success "Redis config already exists or template missing"
+fi
+
 print_step "5/10 - Starting Core Services"
-cd $INSTALL_DIR
+cd "$INSTALL_DIR" || print_error "Cannot change to $INSTALL_DIR"
 docker compose -f docker-compose/docker-compose.yml up -d
 sleep 10
 print_success "Core services started"
@@ -104,25 +153,40 @@ docker compose -f docker-compose/docker-compose.monitoring.yml up -d
 sleep 5
 print_success "Monitoring started"
 
-print_step "7/10 - Starting Mail Server"
-docker compose -f docker-compose/docker-compose.mail.yml up -d 2>/dev/null || echo "Mail server skipped (optional)"
-print_success "Mail server started"
-
-print_step "8/10 - Starting MCP Servers"
+print_step "7/10 - Starting MCP Servers"
 docker compose -f docker-compose/docker-compose.mcp.yml up -d 2>/dev/null || echo "MCP servers skipped (optional)"
 print_success "MCP servers started"
 
-print_step "9/10 - Configuring WireGuard"
+print_step "8/10 - Configuring WireGuard"
 if [ ! -f "/etc/wireguard/server_private.key" ]; then
-    wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
-    chmod 600 /etc/wireguard/server_private.key
+    if command -v wg &> /dev/null; then
+        wg genkey | tee /etc/wireguard/server_private.key | wg pubkey > /etc/wireguard/server_public.key
+        chmod 600 /etc/wireguard/server_private.key
+        SERVER_PUBLIC_KEY=$(cat /etc/wireguard/server_public.key)
+        echo "$SERVER_PUBLIC_KEY" > "$INSTALL_DIR"/.wireguard-server-pubkey
+        print_success "WireGuard configured"
+    else
+        echo "WireGuard not installed, skipping..."
+        print_success "WireGuard skipped"
+    fi
+else
+    SERVER_PUBLIC_KEY=$(cat /etc/wireguard/server_public.key)
+    echo "$SERVER_PUBLIC_KEY" > "$INSTALL_DIR"/.wireguard-server-pubkey
+    print_success "WireGuard already configured"
 fi
-SERVER_PUBLIC_KEY=$(cat /etc/wireguard/server_public.key)
-echo "$SERVER_PUBLIC_KEY" > $INSTALL_DIR/.wireguard-server-pubkey
-print_success "WireGuard configured"
 
-print_step "10/10 - Final Setup"
-touch $INSTALL_DIR/.install-complete
+print_step "8.5/10 - Creating Backup Password File"
+if [ -n "${RESTIC_PASSWORD:-}" ]; then
+    echo "$RESTIC_PASSWORD" > "$INSTALL_DIR"/.restic-password
+    chmod 600 "$INSTALL_DIR"/.restic-password
+    print_success "Backup password file created"
+else
+    echo "RESTIC_PASSWORD not set, skipping..."
+    print_success "Backup password skipped"
+fi
+
+print_step "9/10 - Final Setup"
+touch "$INSTALL_DIR"/.install-complete
 print_success "Installation complete"
 
 clear
@@ -152,4 +216,3 @@ echo "${GREEN}$SERVER_PUBLIC_KEY${NC}"
 echo ""
 echo -e "${GREEN}Documentation: $INSTALL_DIR/README.md${NC}"
 echo ""
->>>>>>> 12ffc10e51b5ddd256ba4dfe740324cde8144af0

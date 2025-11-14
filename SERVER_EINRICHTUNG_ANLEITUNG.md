@@ -373,7 +373,7 @@ notepad hosts
 192.168.1.100 home.homeserver.local
 192.168.1.100 traefik.homeserver.local
 192.168.1.100 portainer.homeserver.local
-192.168.1.100 gitea.homeserver.local
+192.168.1.100 git.homeserver.local
 192.168.1.100 drone.homeserver.local
 192.168.1.100 code.homeserver.local
 192.168.1.100 db.homeserver.local
@@ -419,7 +419,7 @@ Das Homepage-Dashboard zeigt alle Services auf einen Blick.
 
 ### 3. Gitea einrichten (Git-Server)
 
-1. **Gitea öffnen:** http://gitea.homeserver.local
+1. **Gitea öffnen:** http://git.homeserver.local
 
 2. **Erstinstallation:**
    - Datenbank-Typ: PostgreSQL
@@ -427,8 +427,8 @@ Das Homepage-Dashboard zeigt alle Services auf einen Blick.
    - Benutzername: admin
    - Passwort: [POSTGRES_PASSWORD aus .env]
    - Datenbankname: homeserver
-   - Server-Domäne: gitea.homeserver.local
-   - Gitea-Basis-URL: http://gitea.homeserver.local
+   - Server-Domäne: git.homeserver.local
+   - Gitea-Basis-URL: http://git.homeserver.local
    - Administrator-Konto erstellen:
      - Benutzername: admin
      - E-Mail: admin@homeserver.local
@@ -533,7 +533,7 @@ Das Homepage-Dashboard zeigt alle Services auf einen Blick.
 
 | Service | Beschreibung | URL |
 |---------|--------------|-----|
-| **Gitea** | Git-Server (GitHub-Alternative) | http://gitea.homeserver.local |
+| **Gitea** | Git-Server (GitHub-Alternative) | http://git.homeserver.local |
 | **Drone** | CI/CD Pipeline | http://drone.homeserver.local |
 | **Code-Server** | VS Code im Browser | http://code.homeserver.local |
 | **Docker Registry** | Private Container Registry | http://registry.homeserver.local |

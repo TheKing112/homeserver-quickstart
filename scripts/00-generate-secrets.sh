@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Colors
 RED='\033[0;31m'
@@ -17,13 +17,20 @@ EOF
 echo -e "${NC}"
 echo ""
 
+# Check dependencies
+if ! command -v openssl &> /dev/null; then
+    echo -e "${RED}ERROR: openssl not found${NC}"
+    echo "Install: sudo apt install openssl"
+    exit 1
+fi
+
 # Functions
 generate_password() {
-    openssl rand -hex ${1:-16}
+    openssl rand -hex "${1:-16}"
 }
 
 generate_token() {
-    openssl rand -hex ${1:-32}
+    openssl rand -hex "${1:-32}"
 }
 
 # Check if .env already exists
@@ -54,6 +61,8 @@ GRAFANA_ADMIN_PASSWORD=$(generate_password 24)
 RESTIC_PASSWORD=$(generate_password 32)
 VAULTWARDEN_ADMIN_TOKEN=$(generate_token 64)
 MCP_API_KEY=$(generate_token 64)
+MCP_POSTGRES_PASSWORD=$(generate_password 32)
+MCP_MYSQL_PASSWORD=$(generate_password 32)
 
 # Traefik Dashboard Auth (Basic Auth)
 TRAEFIK_USER="admin"
@@ -75,11 +84,12 @@ ADMIN_UI_AUTH=$(htpasswd -nb "$ADMIN_UI_USER" "$ADMIN_UI_PASSWORD")
 # Registry Auth (for Docker Registry)
 REGISTRY_USER="registry"
 REGISTRY_PASSWORD=$(generate_password 24)
-REGISTRY_AUTH=$(htpasswd -nb "$REGISTRY_USER" "$REGISTRY_PASSWORD")
+REGISTRY_UI_AUTH=$(htpasswd -nb "$REGISTRY_USER" "$REGISTRY_PASSWORD")
 
 # Create Registry htpasswd file
 mkdir -p configs/registry/auth
-echo "$REGISTRY_AUTH" > configs/registry/auth/htpasswd
+chmod 700 configs/registry/auth
+echo "$REGISTRY_UI_AUTH" > configs/registry/auth/htpasswd
 chmod 600 configs/registry/auth/htpasswd
 
 # Create .env file
@@ -120,11 +130,13 @@ MAIL_MYSQL_ROOT_PASSWORD=${MAIL_MYSQL_ROOT_PASSWORD}
 MAIL_MYSQL_PASSWORD=${MAIL_MYSQL_PASSWORD}
 MAIL_API_TOKEN=${MAIL_API_TOKEN}
 
-# Email notifications (CONFIGURE THIS!)
-SMTP_HOST=smtp.gmail.com
+# Email notifications (OPTIONAL - Configure only if needed)
+# Use app-specific passwords for Gmail, not your main password
+# Leave empty if not using email notifications
+SMTP_HOST=
 SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-gmail-app-password
+SMTP_USER=
+SMTP_PASSWORD=
 
 # ================================
 # DEVELOPMENT TOOLS
@@ -145,6 +157,10 @@ GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
 # MCP SERVICES
 # ================================
 MCP_API_KEY=${MCP_API_KEY}
+MCP_POSTGRES_USER=mcp_readonly
+MCP_POSTGRES_PASSWORD=${MCP_POSTGRES_PASSWORD}
+MCP_MYSQL_USER=mcp_readonly
+MCP_MYSQL_PASSWORD=${MCP_MYSQL_PASSWORD}
 
 # ================================
 # TRAEFIK DASHBOARD
@@ -160,7 +176,7 @@ ADMIN_UI_AUTH=${ADMIN_UI_AUTH}
 # ================================
 # DOCKER REGISTRY
 # ================================
-REGISTRY_AUTH=${REGISTRY_AUTH}
+REGISTRY_UI_AUTH=${REGISTRY_UI_AUTH}
 
 # ================================
 # BACKUP
@@ -180,15 +196,9 @@ chmod 600 .env
 
 echo -e "${GREEN}✓ Secrets generated successfully!${NC}"
 echo ""
-<<<<<<< HEAD
 echo -e "${CYAN}================================================================${NC}"
 echo -e "${YELLOW}         IMPORTANT - SECRETS SAVED TO .env FILE${NC}"
 echo -e "${CYAN}================================================================${NC}"
-=======
-echo -e "${CYAN}============================================${NC}"
-echo -e "${YELLOW}Checklist: IMPORTANT PASSWORDS (save to password manager!)${NC}"
-echo -e "${CYAN}============================================${NC}"
->>>>>>> 12ffc10e51b5ddd256ba4dfe740324cde8144af0
 echo ""
 echo -e "${RED}⚠ WARNING: Do NOT share these credentials!${NC}"
 echo ""
@@ -198,21 +208,19 @@ echo -e "${YELLOW}To view your secrets (use with caution):${NC}"
 echo "  cat .env | grep PASSWORD"
 echo "  cat .env | grep TOKEN"
 echo ""
-<<<<<<< HEAD
 echo -e "${YELLOW}CRITICAL: Save these to your password manager NOW:${NC}"
 echo "  - PostgreSQL password"
-echo "  - MySQL root password"  
+echo "  - MySQL root password"
 echo "  - Redis password"
 echo "  - Mail API token"
-echo "  - Code Server password"
-echo "  - Grafana admin password"
+echo "  - Code Server password: ${CODE_SERVER_PASSWORD}"
+echo "  - Grafana admin password: ${GRAFANA_ADMIN_PASSWORD}"
 echo "  - Vaultwarden admin token"
 echo "  - Restic backup password"
 echo "  - MCP API Key"
-echo "  - Traefik Dashboard password (user: admin, password in .env)"
-=======
-echo -e "${CYAN}============================================${NC}"
->>>>>>> 12ffc10e51b5ddd256ba4dfe740324cde8144af0
+echo "  - Traefik Dashboard (user: admin, password: ${TRAEFIK_PASSWORD})"
+echo "  - Admin UI BasicAuth (user: admin, password: ${ADMIN_UI_PASSWORD})"
+echo "  - Docker Registry (user: registry, password: ${REGISTRY_PASSWORD})"
 echo ""
 echo -e "${CYAN}================================================================${NC}"
 echo -e "${YELLOW}NEXT STEPS:${NC}"

@@ -197,7 +197,7 @@ services:
 
 Access monitoring at:
 - Grafana: http://grafana.homeserver.local
-- Traefik Dashboard: http://traefik.homeserver.local:8080
+- Traefik Dashboard: http://traefik.homeserver.local
 
 ## Troubleshooting
 
