@@ -2,11 +2,10 @@
 networks:
   frontend:
     name: homeserver_frontend
-    driver: bridge
+    external: true
   backend:
     name: homeserver_backend
-    driver: bridge
-    internal: true
+    external: true
 
 volumes:
   postgres_data:
@@ -26,7 +25,7 @@ services:
   # DOCKER SOCKET PROXY
   #############################################
   docker-proxy:
-    image: tecnativa/docker-socket-proxy:0.2.0
+    image: tecnativa/docker-socket-proxy:0.3.0
     container_name: docker-socket-proxy
     restart: unless-stopped
     networks:
@@ -53,6 +52,9 @@ services:
       - SWARM=0
       - SYSTEM=0
       - VOLUMES=1
+    mem_limit: 128m
+    mem_reservation: 32m
+    cpus: 0.5
 
   #############################################
   # REVERSE PROXY
@@ -193,6 +195,9 @@ services:
     environment:
       - TZ=${TZ:-Europe/Berlin}
       - REDISCLI_AUTH=${REDIS_PASSWORD}
+    mem_limit: 512m
+    mem_reservation: 128m
+    cpus: 1.0
     healthcheck:
       test: ["CMD", "sh", "-c", "redis-cli -a $$REDISCLI_AUTH ping"]
       interval: 10s
@@ -203,7 +208,7 @@ services:
   # DATABASE UI
   #############################################
   adminer:
-    image: adminer:4.8.1
+    image: adminer:4.8.4
     container_name: adminer
     restart: unless-stopped
     networks:
@@ -213,6 +218,14 @@ services:
       - ADMINER_DEFAULT_SERVER=postgres
       - ADMINER_DESIGN=nette
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 256m
+    mem_reservation: 64m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.adminer.rule=Host(`db.homeserver.local`)"
@@ -221,7 +234,7 @@ services:
       - "traefik.http.routers.adminer.middlewares=admin-auth"
 
   redis-insight:
-    image: redis/redisinsight:latest
+    image: redis/redisinsight:2.58.0
     container_name: redis-insight
     restart: unless-stopped
     networks:
@@ -231,6 +244,15 @@ services:
       - redis_insight_data:/data
     environment:
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 512m
+    mem_reservation: 128m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5540/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.redis.rule=Host(`redis.homeserver.local`)"
@@ -287,6 +309,9 @@ services:
       - GITEA__database__USER=${POSTGRES_USER:-admin}
       - GITEA__database__PASSWD=${POSTGRES_PASSWORD}
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 1g
+    mem_reservation: 256m
+    cpus: 2.0
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/healthz"]
       interval: 30s
@@ -321,6 +346,15 @@ services:
       - DRONE_SERVER_PROTO=http
       - DRONE_USER_CREATE=username:admin,admin:true
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 512m
+    mem_reservation: 128m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.drone.rule=Host(`drone.homeserver.local`)"
@@ -343,6 +377,9 @@ services:
       - DRONE_RUNNER_NAME=docker-runner
       - DOCKER_HOST=tcp://docker-proxy:2375
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 1g
+    mem_reservation: 256m
+    cpus: 2.0
     depends_on:
       - drone-server
       - docker-proxy
@@ -351,7 +388,7 @@ services:
   # CODE SERVER
   #############################################
   code-server:
-    image: codercom/code-server:4.96.2
+    image: codercom/code-server:4.96.4
     container_name: code-server
     restart: unless-stopped
     networks:
@@ -363,6 +400,9 @@ services:
     environment:
       - PASSWORD=${CODE_SERVER_PASSWORD}
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 2g
+    mem_reservation: 512m
+    cpus: 2.0
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.code.rule=Host(`code.homeserver.local`)"
@@ -445,6 +485,14 @@ services:
       - ../configs/nginx/sites:/etc/nginx/conf.d:ro
     environment:
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 256m
+    mem_reservation: 64m
+    cpus: 0.5
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.web.rule=Host(`www.homeserver.local`)"
@@ -484,7 +532,7 @@ services:
   # WATCHTOWER (Auto-Updates)
   #############################################
   watchtower:
-    image: containrrr/watchtower
+    image: containrrr/watchtower:1.7.1
     container_name: watchtower
     restart: unless-stopped
     networks:
@@ -497,5 +545,8 @@ services:
       - WATCHTOWER_NOTIFICATION_EMAIL_FROM=homeserver@local
       - WATCHTOWER_NOTIFICATION_EMAIL_TO=admin@local
       - TZ=${TZ:-Europe/Berlin}
+    mem_limit: 256m
+    mem_reservation: 64m
+    cpus: 0.5
     depends_on:
       - docker-proxy

@@ -2,8 +2,10 @@
 networks:
   frontend:
     name: homeserver_frontend
+    external: true
   backend:
     name: homeserver_backend
+    external: true
 
 services:
   # MCP Dashboard
