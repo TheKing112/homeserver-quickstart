@@ -25,7 +25,7 @@ services:
   # DOCKER SOCKET PROXY
   #############################################
   docker-proxy:
-    image: tecnativa/docker-socket-proxy:0.3.0
+    image: tecnativa/docker-socket-proxy:latest
     container_name: docker-socket-proxy
     restart: unless-stopped
     networks:
@@ -60,7 +60,7 @@ services:
   # REVERSE PROXY
   #############################################
   traefik:
-    image: traefik:v3.0
+    image: traefik:latest
     container_name: traefik
     restart: unless-stopped
     security_opt:
@@ -101,7 +101,7 @@ services:
   # DOCKER MANAGEMENT
   #############################################
   portainer:
-    image: portainer/portainer-ce:2.21.5
+    image: portainer/portainer-ce:latest
     container_name: portainer
     restart: unless-stopped
     security_opt:
@@ -138,7 +138,7 @@ services:
   # DATABASES
   #############################################
   postgres:
-    image: postgres:16-alpine
+    image: postgres:alpine
     container_name: postgres
     restart: unless-stopped
     networks:
@@ -160,7 +160,7 @@ services:
       retries: 5
 
   mariadb:
-    image: mariadb:11
+    image: mariadb:latest
     container_name: mariadb
     restart: unless-stopped
     networks:
@@ -183,7 +183,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:alpine
     container_name: redis
     restart: unless-stopped
     networks:
@@ -208,7 +208,7 @@ services:
   # DATABASE UI
   #############################################
   adminer:
-    image: adminer:4.8.4
+    image: adminer:latest
     container_name: adminer
     restart: unless-stopped
     networks:
@@ -234,7 +234,7 @@ services:
       - "traefik.http.routers.adminer.middlewares=admin-auth"
 
   redis-insight:
-    image: redis/redisinsight:2.58.0
+    image: redis/redisinsight:latest
     container_name: redis-insight
     restart: unless-stopped
     networks:
@@ -264,7 +264,7 @@ services:
   # SECURITY
   #############################################
   vaultwarden:
-    image: vaultwarden/server:1.32.5-alpine
+    image: vaultwarden/server:alpine
     container_name: vaultwarden
     restart: unless-stopped
     networks:
@@ -290,7 +290,7 @@ services:
   # GIT SERVER
   #############################################
   gitea:
-    image: gitea/gitea:1.22.6
+    image: gitea/gitea:latest
     container_name: gitea
     restart: unless-stopped
     networks:
@@ -329,7 +329,7 @@ services:
   # CI/CD
   #############################################
   drone-server:
-    image: drone/drone:2
+    image: drone/drone:latest
     container_name: drone-server
     restart: unless-stopped
     networks:
@@ -364,7 +364,7 @@ services:
       - gitea
 
   drone-runner:
-    image: drone/drone-runner-docker:1
+    image: drone/drone-runner-docker:latest
     container_name: drone-runner
     restart: unless-stopped
     networks:
@@ -388,7 +388,7 @@ services:
   # CODE SERVER
   #############################################
   code-server:
-    image: codercom/code-server:4.96.4
+    image: codercom/code-server:latest
     container_name: code-server
     restart: unless-stopped
     networks:
@@ -419,7 +419,7 @@ services:
   # DOCKER REGISTRY
   #############################################
   registry:
-    image: registry:2
+    image: registry:latest
     container_name: docker-registry
     restart: unless-stopped
     networks:
@@ -448,7 +448,7 @@ services:
       start_period: 30s
 
   registry-ui:
-    image: joxit/docker-registry-ui:2.5.7
+    image: joxit/docker-registry-ui:latest
     container_name: registry-ui
     restart: unless-stopped
     networks:
@@ -503,7 +503,7 @@ services:
   # HOMEPAGE DASHBOARD
   #############################################
   homepage:
-    image: ghcr.io/gethomepage/homepage:v0.10.6
+    image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
     restart: unless-stopped
     networks:
@@ -532,7 +532,7 @@ services:
   # WATCHTOWER (Auto-Updates)
   #############################################
   watchtower:
-    image: containrrr/watchtower:1.7.1
+    image: containrrr/watchtower:latest
     container_name: watchtower
     restart: unless-stopped
     networks:
